@@ -3,7 +3,7 @@
 // @namespace     https://github.com/mysticflute
 // @version       1.0.3-eastrane
 // @description   For anilist.co, make manga and anime scores more prominent by moving them to the title.
-// @author        mysticflute
+// @author        mysticflute, EastRane
 // @homepageURL   https://github.com/mysticflute/ani-list-unlimited
 // @supportURL    https://github.com/mysticflute/ani-list-unlimited/issues
 // @match         https://anilist.co/*
