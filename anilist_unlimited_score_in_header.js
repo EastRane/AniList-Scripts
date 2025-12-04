@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          AniList Unlimited - Score in Header
 // @namespace     https://github.com/mysticflute
-// @version       1.0.3
+// @version       1.0.3-eastrane
 // @description   For anilist.co, make manga and anime scores more prominent by moving them to the title.
 // @author        mysticflute
 // @homepageURL   https://github.com/mysticflute/ani-list-unlimited
@@ -10,6 +10,7 @@
 // @connect       graphql.anilist.co
 // @connect       api.jikan.moe
 // @connect       kitsu.io
+// @connect       shikimori.one
 // @grant         GM_xmlhttpRequest
 // @grant         GM_setValue
 // @grant         GM_getValue
@@ -75,6 +76,9 @@
     /** When true, adds the Kitsu score to the header. */
     addKitsuScoreToHeader: false,
 
+    /** When true, adds the Shikimori score to the header. */
+    addShikimoriScoreToHeader: true,
+
     /** When true, show the smile/neutral/frown icons next to the AniList score. */
     showIconWithAniListScore: true,
 
@@ -101,6 +105,9 @@
 
     /** Endpoint for the Kitsu API */
     KITSU_API: 'https://kitsu.io/api/edge',
+
+    /** Endpoint for the Shikimori API */
+    SHIKIMORI_API: 'https://shikimori.one/api',
 
     /** Regex to extract the page type and media id from a AniList url path */
     ANI_LIST_URL_PATH_REGEX: /(anime|manga)\/([0-9]+)/i,
@@ -502,6 +509,37 @@
         throw error;
       }
     },
+    /**
+     * Loads data from the Shikimori API.
+     *
+     * @param {('anime'|'manga')} type - The type of media content.
+     * @param {string} shikimoriId - The Shikimori media id.
+     *
+     * @returns {Promise<Object>} A Promise returning the media's data, or a
+     * rejection if there was a problem calling the API.
+     */
+    async loadShikimoriData(type, shikimoriId) {
+        try {
+            const response = await utils.xhr({
+                url: `${constants.SHIKIMORI_API}/${type === 'anime' ? 'animes' : 'mangas'}/${shikimoriId}`,
+                method: 'GET',
+                responseType: 'json',
+            });
+            utils.debug('Shikimori API response:', response);
+
+            return response;
+        } catch (res) {
+            const message = `Shikimori API request failed for media with ID '${shikimoriId}'`;
+            utils.groupError(
+                message,
+                `Request failed with status ${res.status}`,
+                res.response ? res.response.error || res.response.message : res
+            );
+            const error = new Error(message);
+            error.response = res;
+            throw error;
+        }
+    },
   };
 
   /**
@@ -600,6 +638,10 @@
 
       if (this.config.addKitsuScoreToHeader) {
         this.addKitsuScoreToHeader(pageType, mediaId, aniListData);
+      }
+
+      if (this.config.addShikimoriScoreToHeader) {
+        this.addShikimoriScoreToHeader(pageType, mediaId, aniListData);
       }
     }
 
@@ -762,6 +804,88 @@
     }
 
     /**
+	 * Adds the Shikimori score to the header.
+	 *
+	 * @param {('anime'|'manga')} type - The type of media content.
+	 * @param {string} mediaId - The AniList media id.
+	 * @param {Object} aniListData - The data from the AniList api.
+	 */
+	async addShikimoriScoreToHeader(pageType, mediaId, aniListData) {
+		const slot = 4;
+		const source = 'Shikimori';
+
+		const shikimoriId = aniListData.idMal;
+
+		if (!shikimoriId) {
+			utils.error(`no ${source} id found for media ${mediaId}`);
+			return this.clearHeaderSlot(slot);
+		}
+
+		if (this.config.showLoadingIndicators) {
+			await this.showSlotLoading(slot);
+		}
+
+		api.loadShikimoriData(pageType, shikimoriId)
+			.then(data => {
+				if (!data || !data.score) {
+					utils.error(`no ${source} score found for media ${mediaId}`);
+					return this.clearHeaderSlot(slot);
+				}
+
+				let shikiScore;
+				let totalCount = 0;
+
+				if (data.rates_scores_stats && data.rates_scores_stats.length > 0) {
+					let sumScore = 0;
+
+					for (let i = 0; i < data.rates_scores_stats.length; i++) {
+						const scoreData = data.rates_scores_stats[i];
+						sumScore += scoreData.value * Number(scoreData.name);
+						totalCount += scoreData.value;
+					}
+
+					shikiScore = sumScore / totalCount;
+				} else {
+					shikiScore = parseFloat(data.score);
+				}
+
+				const score = shikiScore ? shikiScore.toFixed(2) : '(N/A)';
+				const href = `https://shikimori.one/${pageType === 'anime' ? 'animes' : 'mangas'}/${shikimoriId}`;
+
+				let info = '';
+				if (data.rates_scores_stats && data.rates_scores_stats.length > 0) {
+					info = ` (based on ${totalCount} ratings)`;
+				} else if (data.score) {
+					info = ' (general score)';
+				}
+
+				return this.addToHeader({ slot, source, score, href, info });
+			})
+			.catch(e => {
+				utils.error(
+					`Unable to add the ${source} score to the header: ${e.message}`
+				);
+
+				if (e.response && e.response.status === 429) {
+					// rate limited
+					return this.addToHeader({
+						slot,
+						source,
+						score: 'Unavailable*',
+						info: ': Temporarily unavailable due to rate-limiting. Reload in a few seconds to try again',
+					});
+				} else if (e.response && e.response.status === 404) {
+					return this.addToHeader({
+						slot,
+						source,
+						score: 'Not Found',
+						info: ': Entry not found on Shikimori',
+					});
+				}
+			});
+	}
+
+    /**
      * Shows a loading indicator in the given slot position.
      *
      * @param {number} slot - The slot position.
@@ -866,7 +990,7 @@
         containerEl.style.marginTop = '1em';
         containerEl.style.alignItems = 'center';
 
-        const numSlots = 3;
+        const numSlots = 4;
         for (let i = 0; i < numSlots; i++) {
           const slotEl = document.createElement('div');
           slotEl.className = `${constants.CLASS_PREFIX}-slot${i + 1}`;
