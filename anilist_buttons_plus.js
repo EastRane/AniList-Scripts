@@ -1,6 +1,6 @@
 // ==UserScript==
 // @author      Deathwing, EastRane
-// @name        Anilist Buttons Plus
+// @name        AniList Buttons Plus
 // @include     https://anilist.co/*
 // @description A script that adds buttons on Anilist for searching various sites.
 // @version     2.820-east
