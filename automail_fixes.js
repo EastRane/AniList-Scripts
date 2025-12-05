@@ -2,7 +2,7 @@
 // @name         Automail Fixes
 // @description  Small fixes to hoh's Automail script
 // @author       EastRane
-// @version      1.0.1
+// @version      1.0.2
 // @match        https://anilist.co/*
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -192,7 +192,35 @@
                     borderRadius: "4px",
                     marginBottom: "8px",
                     border: "1px solid rgb(var(--color-border))",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    cursor: "pointer",
+                    transition: "background-color 0.2s ease"
+                });
+
+                entry.addEventListener('mouseenter', () => {
+                    if (!entry.dataset.collapsed) {
+                        entry.style.backgroundColor = "rgba(var(--color-foreground), 0.7)";
+                    }
+                });
+                entry.addEventListener('mouseleave', () => {
+                    if (!entry.dataset.collapsed) {
+                        entry.style.backgroundColor = "rgb(var(--color-foreground))";
+                    }
+                });
+
+                entry.addEventListener('click', () => {
+                    const nextElement = entry.nextElementSibling;
+                    if (nextElement && nextElement.classList.contains('hohTimelineEntry') && nextElement.classList.contains('replies')) {
+                        if (nextElement.style.display === 'none') {
+                            nextElement.style.display = 'flex';
+                            entry.dataset.collapsed = 'false';
+                            entry.style.backgroundColor = "rgb(var(--color-foreground))";
+                        } else {
+                            nextElement.style.display = 'none';
+                            entry.dataset.collapsed = 'true';
+                            entry.style.backgroundColor = "rgba(var(--color-foreground), 0.5)";
+                        }
+                    }
                 });
 
                 // Style link inside .hohTimelineEntry
@@ -232,7 +260,9 @@
                 Object.assign(replyEntry.style, {
                     marginLeft: "30px",
                     marginTop: "8px",
-                    borderRadius: "4px"
+                    borderRadius: "4px",
+                    display: "flex",
+                    flexDirection: "column"
                 });
 
                 // Find and style existing reply elements in this container
