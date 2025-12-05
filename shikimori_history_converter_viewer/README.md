@@ -14,6 +14,6 @@ Lets you view your Shikimori history on the AniList Social tab of an anime or ma
 4. Install "AniList Shikimori History Viewer" script.
 5. Paste the contents of a "shikimori_history.json" file into "const EVENTS_BY_SHIKI_ID = {};" line inside of "AniList Shikimori History Viewer" script.
 
-![Step 5 visualization](/screenshots/step5.png)
+![Step 5 visualization](/shikimori_history_converter_viewer/screenshots/step5.png)
 
 6. Enjoy!
