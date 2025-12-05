@@ -628,6 +628,12 @@
 
       const aniListData = await api.loadAniListData(pageType, mediaId);
 
+      // No need to readd scores if scores are already present
+      const containerExists = document.querySelector(`.${constants.CLASS_PREFIX}-scores`);
+      if (containerExists && containerExists.children.length > 0) {
+          return;
+      }
+
       if (this.config.addAniListScoreToHeader) {
         this.addAniListScoreToHeader(pageType, mediaId, aniListData);
       }
@@ -987,7 +993,7 @@
         containerEl = document.createElement('div');
         containerEl.className = containerClass;
         containerEl.style.display = 'flex';
-        containerEl.style.marginTop = '1em';
+        containerEl.style.marginTop = '8px';
         containerEl.style.alignItems = 'center';
 
         const numSlots = 4;
