@@ -17,3 +17,6 @@ Original repository: [GitHub](https://github.com/Deatthwing/anime-website-button
 Small fixes to [hoh's Automail script](https://github.com/hohMiyazawa/Automail).
 ### Features
 - Dialogue windows redesign (mostly for expanded notes window...)
+
+## Shikimori History Exporter/Viewer
+Lets you view your Shikimori history on the AniList Social tab of an anime or manga page (of course client-sided).
