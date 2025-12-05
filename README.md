@@ -8,3 +8,12 @@ Original repository: [GitHub](https://github.com/mysticflute/ani-list-unlimited)
 
 ## Anilist Buttons Plus
 Original repository: [GitHub](https://github.com/Deatthwing/anime-website-buttons-plus)
+### Changes
+- New buttons design
+- Removed custom buttons creation feature
+- Changed default buttons list
+
+## Automail Fixes
+Small fixes to hoh's Automail script.
+### Features
+- Dialogue windows redesign (mostly for expanded notes window...)
