@@ -13,35 +13,35 @@
     'use strict';
 
     GM_addStyle(`
-        .anilist-button-container {
-            display: inline-flex;
-            align-items: center;
-            margin-left: 10px;
-            font-size: 0;
-        }
-        .anilist-button-container a {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 6px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            text-decoration: none;
-            background: #176297;
-            border: 1px solid #1B2F7B;
-            color: #fff;
-            transition: background 0.2s;
-            font-size: 12px;
-        }
-        .anilist-button-container a:hover {
-            background: #0f4064;
-        }
-        .anilist-button-container img {
-            width: 18px;
-            height: 18px;
-            margin-right: 4px;
-        }
-    `);
+    .anilist-button-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+        margin-bottom: 8px;
+    }
+    .anilist-button-container a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-decoration: none;
+        background: #176297;
+        border: 1px solid #1B2F7B;
+        color: #fff;
+        transition: background 0.2s;
+        font-size: 12px;
+    }
+    .anilist-button-container a:hover {
+        background: #0f4064;
+    }
+    .anilist-button-container img {
+        width: 18px;
+        height: 18px;
+        margin-right: 4px;
+    }
+`);
 
     let outerButtonsDiv = null;
     let lastTitle = '';
@@ -50,27 +50,33 @@
         const encoded = encodeURIComponent(title);
         const isManga = window.location.pathname.includes('/manga/');
 
-        const buttons = [
-            {
+        const buttons = [{
                 title: "MAL",
-                url: isManga ? `https://myanimelist.net/manga.php?q=${encoded}`
-                              : `https://myanimelist.net/anime.php?q=${encoded}`
+                url: isManga ? `https://myanimelist.net/manga.php?q=${encoded}` :
+                    `https://myanimelist.net/anime.php?q=${encoded}`
             },
             {
                 title: "Nyaa",
-                url: isManga
-                    ? `https://nyaa.si/?f=0&c=3_1&q=${encoded}`
-                    : `https://nyaa.si/?f=0&c=1_2&q=${encoded}`
+                url: isManga ?
+                    `https://nyaa.si/?f=0&c=3_1&q=${encoded}` :
+                    `https://nyaa.si/?f=0&c=1_2&q=${encoded}`
             }
         ];
 
         if (!isManga) {
-            buttons.push(
-                { title: "aniDB", url: `https://anidb.net/anime/?adb.search=${encoded}&do.search=1` },
-                { title: "Animelib", url: `https://animelib.org/ru/catalog?q=${encoded}` },
-                { title: "AnimeKai", url: `https://animekai.to/browser?keyword=${encoded}` },
-                { title: "HiAnime", url: `https://hianime.to/search?keyword=${encoded}` }
-            );
+            buttons.push({
+                title: "aniDB",
+                url: `https://anidb.net/anime/?adb.search=${encoded}&do.search=1`
+            }, {
+                title: "Animelib",
+                url: `https://animelib.org/ru/catalog?q=${encoded}`
+            }, {
+                title: "AnimeKai",
+                url: `https://animekai.to/browser?keyword=${encoded}`
+            }, {
+                title: "HiAnime",
+                url: `https://hianime.to/search?keyword=${encoded}`
+            });
         }
 
         return buttons;
@@ -102,7 +108,6 @@
     }
 
     function insertButtons() {
-
         const path = window.location.pathname;
         if (!/^\/(anime|manga)\/\d+/.test(path)) {
             return;
@@ -117,22 +122,19 @@
         });
         currentTitle = currentTitle.trim();
 
-        const buttonsExist = header.querySelector('.anilist-button-container');
+        if (!currentTitle) return;
 
-        if (!currentTitle) {
-            return;
-        }
+        const parent = header.parentNode;
+        const existingButtons = parent.querySelector('.anilist-button-container');
 
-        if (!buttonsExist || currentTitle !== lastTitle) {
-            lastTitle = currentTitle;
+        const isCorrectTitle = existingButtons && existingButtons.dataset.title === currentTitle;
 
-            if (outerButtonsDiv) {
-                outerButtonsDiv.remove();
-            }
+        if (!existingButtons || !isCorrectTitle) {
+            if (existingButtons) existingButtons.remove();
 
             const buttonsBlock = createButtons(currentTitle);
-            header.appendChild(buttonsBlock);
-        } else {
+            buttonsBlock.dataset.title = currentTitle;
+            header.parentNode.insertBefore(buttonsBlock, header.nextSibling);
         }
     }
 
@@ -141,14 +143,25 @@
     const observer = new MutationObserver(() => {
         insertButtons();
     });
-    observer.observe(contentRoot, { childList: true, subtree: true });
+    observer.observe(contentRoot, {
+        childList: true,
+        subtree: true
+    });
 
     // hijack history.pushState/replaceState
-    const _wr = type => { const orig = history[type]; return function () { const rv = orig.apply(this, arguments); window.dispatchEvent(new Event(type)); return rv; }; };
+    const _wr = type => {
+        const orig = history[type];
+        return function() {
+            const rv = orig.apply(this, arguments);
+            window.dispatchEvent(new Event(type));
+            return rv;
+        };
+    };
     history.pushState = _wr("pushState");
     history.replaceState = _wr("replaceState");
 
     let lastPath = location.pathname + location.search + location.hash;
+
     function handleUrlChange() {
         const cur = location.pathname + location.search + location.hash;
         if (cur === lastPath) return;
