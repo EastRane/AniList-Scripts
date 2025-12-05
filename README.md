@@ -14,6 +14,6 @@ Original repository: [GitHub](https://github.com/Deatthwing/anime-website-button
 - Changed default buttons list
 
 ## Automail Fixes
-Small fixes to hoh's Automail script.
+Small fixes to [hoh's Automail script](https://github.com/hohMiyazawa/Automail).
 ### Features
 - Dialogue windows redesign (mostly for expanded notes window...)
