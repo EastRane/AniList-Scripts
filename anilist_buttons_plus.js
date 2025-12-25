@@ -50,34 +50,37 @@
         const encoded = encodeURIComponent(title);
         const isManga = window.location.pathname.includes('/manga/');
 
-        const buttons = [{
-                title: "MAL",
-                url: isManga ? `https://myanimelist.net/manga.php?q=${encoded}` :
-                    `https://myanimelist.net/anime.php?q=${encoded}`
-            },
+        const buttons = [];
+
+        if (!isManga) {
+            buttons.push(
+				{
+					title: "Animelib",
+					url: `https://animelib.org/ru/catalog?q=${encoded}`
+				},
+				{
+					title: "AnimeKai",
+					url: `https://animekai.to/browser?keyword=${encoded}`
+				},
+				{
+					title: "HiAnime",
+					url: `https://hianime.to/search?keyword=${encoded}`
+				},
+				{
+					title: "aniDB",
+					url: `https://anidb.net/anime/?adb.search=${encoded}&do.search=1`
+				}
+			);
+        }
+
+        buttons.push(
             {
                 title: "Nyaa",
                 url: isManga ?
                     `https://nyaa.si/?f=0&c=3_1&q=${encoded}` :
                     `https://nyaa.si/?f=0&c=1_2&q=${encoded}`
             }
-        ];
-
-        if (!isManga) {
-            buttons.push({
-                title: "aniDB",
-                url: `https://anidb.net/anime/?adb.search=${encoded}&do.search=1`
-            }, {
-                title: "Animelib",
-                url: `https://animelib.org/ru/catalog?q=${encoded}`
-            }, {
-                title: "AnimeKai",
-                url: `https://animekai.to/browser?keyword=${encoded}`
-            }, {
-                title: "HiAnime",
-                url: `https://hianime.to/search?keyword=${encoded}`
-            });
-        }
+        )
 
         return buttons;
     }
