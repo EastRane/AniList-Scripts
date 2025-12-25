@@ -2,7 +2,7 @@
 // @name         Automail Fixes
 // @description  Small fixes to hoh's Automail script
 // @author       EastRane
-// @version      1.0.2
+// @version      1.1.0
 // @match        https://anilist.co/*
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -43,7 +43,9 @@
         }
     };
 
-    // begin modules/dialogWindowRedesign
+    // ==============================
+    // MODULE: dialogWindowRedesign
+    // ==============================
     ModuleManager.register("dialogWindowRedesign", function() {
 
         function createOverlay(onClose) {
@@ -156,7 +158,6 @@
             box.appendChild(closeBtn);
         }
 
-        // Function to apply styles to elements inside the dialog window
         function applyNoteStyles() {
             const box = document.querySelector(".hohDisplayBox");
             if (!box) return;
@@ -164,7 +165,6 @@
             const scrollContent = box.querySelector(".scrollableContent");
             if (!scrollContent) return;
 
-            // Style <hr>
             const hrElements = scrollContent.querySelectorAll("hr");
             hrElements.forEach(hr => {
                 if (hr.dataset.styledByAutomailFixes) return;
@@ -177,7 +177,6 @@
                 });
             });
 
-            // Style .hohTimelineEntry (only main entries, not .replies)
             const timelineEntries = scrollContent.querySelectorAll(".hohTimelineEntry:not(.replies)");
             timelineEntries.forEach(entry => {
                 if (entry.dataset.styledByAutomailFixes) return;
@@ -223,7 +222,6 @@
                     }
                 });
 
-                // Style link inside .hohTimelineEntry
                 const link = entry.querySelector("a.newTab");
                 if (link && !link.dataset.styledByAutomailFixes) {
                     link.dataset.styledByAutomailFixes = "true";
@@ -237,7 +235,6 @@
                     link.addEventListener('mouseleave', () => link.style.textDecoration = "none");
                 }
 
-                // Style date inside .hohTimelineEntry
                 const dateSpan = entry.querySelector("span[title]");
                 if (dateSpan && !dateSpan.dataset.styledByAutomailFixes) {
                     dateSpan.dataset.styledByAutomailFixes = "true";
@@ -250,12 +247,9 @@
                 }
             });
 
-            // Style .hohTimelineEntry.replies
             const replyEntries = scrollContent.querySelectorAll(".hohTimelineEntry.replies");
             replyEntries.forEach(replyEntry => {
-                if (replyEntry.dataset.styledRepliesByAutomailFixes) {
-                    return;
-                }
+                if (replyEntry.dataset.styledRepliesByAutomailFixes) return;
                 replyEntry.dataset.styledRepliesByAutomailFixes = "true";
                 Object.assign(replyEntry.style, {
                     marginLeft: "30px",
@@ -265,20 +259,15 @@
                     flexDirection: "column"
                 });
 
-                // Find and style existing reply elements in this container
                 const existingReplies = replyEntry.querySelectorAll(".reply");
                 existingReplies.forEach(styleReplyContent);
             });
         }
 
-        // Helper function to style the content of .reply
         function styleReplyContent(reply) {
-            if (reply.dataset.styledByAutomailFixes) {
-                return;
-            }
+            if (reply.dataset.styledByAutomailFixes) return;
             reply.dataset.styledByAutomailFixes = "true";
 
-            // Style the .reply container
             Object.assign(reply.style, {
                 padding: "12px 16px",
                 background: "rgb(var(--color-background), .7)",
@@ -290,7 +279,6 @@
                 lineHeight: "1.5"
             });
 
-            // Style the username
             const nameSpan = reply.querySelector(".name");
             if (nameSpan && !nameSpan.dataset.styledByAutomailFixes) {
                 nameSpan.dataset.styledByAutomailFixes = "true";
@@ -310,29 +298,68 @@
                     const box = document.querySelector(".hohDisplayBox");
                     if (box) {
                         restyleBox(box);
-                        // Apply styles to content after restyling the box
                         applyNoteStyles();
-                        // Set up observer for content changes
-                        let contentObserver = null;
-                        if (contentObserver) {
-                            contentObserver.disconnect();
-                        }
-                        contentObserver = new MutationObserver(applyNoteStyles);
-                        contentObserver.observe(box, {
-                            childList: true,
-                            subtree: true
-                        });
+                        let contentObserver = new MutationObserver(applyNoteStyles);
+                        contentObserver.observe(box, { childList: true, subtree: true });
                     }
                 }
             }
         });
 
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
+        observer.observe(document.body, { childList: true, subtree: true });
+    }, true);
+
+    // ========================================
+    // MODULE: fixActivityTimelineOrder
+    // ========================================
+    ModuleManager.register("fixActivityTimelineOrder", function() {
+        function fixTimeline() {
+            const timeline = document.getElementById("activityTimeline");
+            if (!timeline || timeline.dataset.fixedByAutomailFixes) return;
+
+            timeline.dataset.fixedByAutomailFixes = "1";
+
+            const gaps = timeline.querySelectorAll(".hohTimelineGap");
+            gaps.forEach(gap => gap.remove());
+
+            const entries = Array.from(timeline.querySelectorAll(".hohTimelineEntry"));
+            if (entries.length === 0) return;
+
+            const mainEntries = entries.filter(el => !el.classList.contains("replies"));
+            const replyMap = new Map();
+
+            entries.forEach(entry => {
+                if (entry.classList.contains("replies")) {
+                    const prev = entry.previousElementSibling;
+                    if (prev && prev.classList.contains("hohTimelineEntry") && !prev.classList.contains("replies")) {
+                        if (!replyMap.has(prev)) replyMap.set(prev, []);
+                        replyMap.get(prev).push(entry);
+                    }
+                }
+            });
+
+            const h2 = timeline.querySelector("h2");
+
+            timeline.innerHTML = "";
+            if (h2) timeline.appendChild(h2);
+
+            for (let i = mainEntries.length - 1; i >= 0; i--) {
+                const entry = mainEntries[i];
+                timeline.appendChild(entry);
+                if (replyMap.has(entry)) {
+                    replyMap.get(entry).forEach(reply => timeline.appendChild(reply));
+                }
+            }
+        }
+
+        const observer = new MutationObserver(() => {
+            if (document.getElementById("activityTimeline")) {
+                setTimeout(fixTimeline, 100);
+            }
         });
 
-    });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }, true);
 
     ModuleManager.initAll();
 

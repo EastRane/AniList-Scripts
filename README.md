@@ -17,6 +17,7 @@ Original repository: [GitHub](https://github.com/Deatthwing/anime-website-button
 Small fixes to [hoh's Automail script](https://github.com/hohMiyazawa/Automail).
 ### Features
 - Dialogue windows redesign (mostly for expanded notes window...)
+- Activity Timeline's gaps removal & reverse order of entries
 
 ## AniList Multilingual Titles
 Shows "Romaji / English / Russian" titles on anime/manga pages.
