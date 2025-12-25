@@ -317,13 +317,13 @@
             const timeline = document.getElementById("activityTimeline");
             if (!timeline || timeline.dataset.fixedByAutomailFixes) return;
 
-            timeline.dataset.fixedByAutomailFixes = "1";
-
             const gaps = timeline.querySelectorAll(".hohTimelineGap");
             gaps.forEach(gap => gap.remove());
 
             const entries = Array.from(timeline.querySelectorAll(".hohTimelineEntry"));
             if (entries.length === 0) return;
+
+            timeline.dataset.fixedByAutomailFixes = "1";
 
             const mainEntries = entries.filter(el => !el.classList.contains("replies"));
             const replyMap = new Map();
