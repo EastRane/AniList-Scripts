@@ -4,8 +4,7 @@
 // @version      1.1.0
 // @description  Shows "Romaji / English / Russian" titles on anime/manga pages
 // @author       EastRane
-// @match        https://anilist.co/anime/*
-// @match        https://anilist.co/manga/*
+// @match        https://anilist.co/*
 // @grant        GM.xmlHttpRequest
 // @connect      graphql.anilist.co
 // @connect      shikimori.one
@@ -156,11 +155,18 @@
 		if (isUpdating) return;
 		isUpdating = true;
 
-		const media = getMediaIdAndType();
-		if (!media || media.id === currentMediaId) {
-			isUpdating = false;
-			return;
-		}
+        const media = getMediaIdAndType();
+
+        if (!media) {
+            currentMediaId = null;
+            isUpdating = false;
+            return;
+        }
+
+        if (media.id === currentMediaId) {
+            isUpdating = false;
+            return;
+        }
 
 		currentMediaId = media.id;
 
