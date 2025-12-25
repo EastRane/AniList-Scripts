@@ -606,33 +606,29 @@
      *
      * This will only add content if we are on a relevant page in the app.
      */
-    async applyPageModifications() {
-      const pathname = window.location.pathname;
-      utils.debug('checking page url', pathname);
+      async applyPageModifications() {
+          const pathname = window.location.pathname;
+          const matches = constants.ANI_LIST_URL_PATH_REGEX.exec(pathname);
 
-      if (this.lastCheckedUrlPath === pathname) {
-        utils.debug('url path did not change, skipping');
-        return;
-      }
-      this.lastCheckedUrlPath = pathname;
+          if (!matches) {
+              this.lastCheckedMediaId = null;
+              return;
+          }
 
-      const matches = constants.ANI_LIST_URL_PATH_REGEX.exec(pathname);
-      if (!matches) {
-        utils.debug('url did not match');
-        return;
-      }
+          const mediaId = matches[2];
 
-      const pageType = matches[1];
-      const mediaId = matches[2];
-      utils.debug('pageType:', pageType, 'mediaId:', mediaId);
+          if (this.lastCheckedMediaId === mediaId) {
+              return;
+          }
 
-      const aniListData = await api.loadAniListData(pageType, mediaId);
+          this.lastCheckedMediaId = mediaId;
 
-      // No need to readd scores if scores are already present
-      const containerExists = document.querySelector(`.${constants.CLASS_PREFIX}-scores`);
-      if (containerExists && containerExists.children.length > 0) {
-          return;
-      }
+          const oldContainer = document.querySelector(`.${constants.CLASS_PREFIX}-scores`);
+          if (oldContainer) oldContainer.remove();
+
+          const pageType = matches[1];
+
+          const aniListData = await api.loadAniListData(pageType, mediaId);
 
       if (this.config.addAniListScoreToHeader) {
         this.addAniListScoreToHeader(pageType, mediaId, aniListData);
