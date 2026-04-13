@@ -13,14 +13,19 @@ Original repository: [GitHub](https://github.com/Deatthwing/anime-website-button
 - Removed custom buttons creation feature
 - Changed default buttons list
 
-## Automail Fixes
-Small fixes to [hoh's Automail script](https://github.com/hohMiyazawa/Automail).
+## AniList Fixes
+Small fixes to [hoh's Automail script](https://github.com/hohMiyazawa/Automail) and some AniList tweaks to ensure structure stability etc.
 ### Features
-- Dialogue windows redesign (mostly for expanded notes window...)
-- Activity Timeline's gaps removal & reverse order of entries
+- Dialogue windows redesign (mostly for expanded notes window...) / Automail
+- Activity Timeline's gaps removal & reverse order of entries / Automail
+- Dynamic sidebar margin resize based on scripts' additions to a header / AniList
 
 ## AniList Multilingual Titles
 Shows "Romaji / English / Russian" titles on anime/manga pages.
 
 ## Shikimori History Exporter/Viewer
 Lets you view your Shikimori history on the AniList Social tab of an anime or manga page (of course client-sided).
+
+## AniList Review Bridge
+Shows "open review" button every time there is a review on my website related to the opened media.
+Also adds several small utility buttons for Obsidian/Quartz page write process.
