@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         Automail Fixes
-// @description  Small fixes to hoh's Automail script
+// @name         AniList Fixes
+// @description  Small fixes to hoh's Automail script and AniList pages
 // @author       EastRane
 // @version      1.1.0
 // @match        https://anilist.co/*
@@ -44,7 +44,7 @@
     };
 
     // ==============================
-    // MODULE: dialogWindowRedesign
+    // MODULE: dialogWindowRedesign / Automail
     // ==============================
     ModuleManager.register("dialogWindowRedesign", function() {
 
@@ -310,7 +310,7 @@
     }, true);
 
     // ========================================
-    // MODULE: fixActivityTimelineOrder
+    // MODULE: fixActivityTimelineOrder / Automail
     // ========================================
     ModuleManager.register("fixActivityTimelineOrder", function() {
         function fixTimeline() {
@@ -359,6 +359,136 @@
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
+    }, true);
+
+    // ========================================
+    // MODULE: fixHeaderMargin / AniList
+    // Ensures proper sidebar margin after other scripts' work
+    // ========================================
+    ModuleManager.register("fixHeaderMargin", function() {
+        const CUSTOM_HEADER_SELECTORS = [
+            '.anilist-button-container',
+            '.user-script-ani-list-unlimited-scores',
+        ];
+
+        let lastAppliedMargin = null;
+        let isApplyingFix = false;
+        let stabilizationTimeout = null;
+
+        function calculateCorrectMargin() {
+            const coverInner = document.querySelector('.header .cover-wrap-inner');
+            const content = document.querySelector('.header .content');
+            if (!coverInner || !content) return 0;
+            const diff = coverInner.offsetHeight - content.offsetHeight - 32;
+            return Math.max(diff, 0);
+        }
+
+        function fixSidebarMargin() {
+            if (isApplyingFix) return;
+
+            const sidebar = document.querySelector('.media .sidebar');
+            if (!sidebar) return;
+
+            const currentMargin = parseInt(sidebar.style.marginTop) || 0;
+
+            if (currentMargin === 0) {
+                return;
+            }
+
+            const totalHeight = calculateCorrectMargin()
+
+            if (totalHeight > 0 && Math.abs(currentMargin - totalHeight) > 5) {
+                isApplyingFix = true;
+
+                sidebar.style.marginTop = `${totalHeight}px`;
+                lastAppliedMargin = totalHeight;
+
+                console.log(`[AutomailFixes] Adjusted header margin from ${currentMargin}px to ${totalHeight}px`);
+
+                setTimeout(() => {
+                    isApplyingFix = false;
+                }, 100);
+            }
+        }
+
+        function scheduleFixAfterStabilization(delay = 200) {
+            clearTimeout(stabilizationTimeout);
+            stabilizationTimeout = setTimeout(() => {
+                fixSidebarMargin();
+            }, delay);
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        const debouncedFix = debounce(scheduleFixAfterStabilization, 100);
+
+        const observer = new MutationObserver((mutations) => {
+            let needsFix = false;
+
+            for (const mutation of mutations) {
+                if (mutation.addedNodes.length > 0) {
+                    for (const node of mutation.addedNodes) {
+                        if (node.nodeType === 1) {
+                            if (CUSTOM_HEADER_SELECTORS.some(sel =>
+                                node.matches(sel) || node.querySelector(sel))) {
+                                needsFix = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    const target = mutation.target;
+                    if (target.classList.contains('media') ||
+                        target.classList.contains('header') ||
+                        target.classList.contains('sidebar')) {
+                        needsFix = true;
+                    }
+                }
+            }
+
+            if (needsFix && !isApplyingFix) {
+                debouncedFix();
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class']
+        });
+
+        window.addEventListener('load', () => {
+            scheduleFixAfterStabilization(800);
+        });
+
+        let lastUrl = location.href;
+        new MutationObserver(() => {
+            const url = location.href;
+            if (url !== lastUrl) {
+                lastUrl = url;
+                scheduleFixAfterStabilization(600);
+            }
+        }).observe(document.querySelector('title') || document, {
+            childList: true,
+            characterData: true
+        });
+
+        window.addEventListener('resize', () => {
+            scheduleFixAfterStabilization(200);
+        });
     }, true);
 
     ModuleManager.initAll();
