@@ -2,7 +2,7 @@
 // @name         AniList Fixes
 // @description  Small fixes to hoh's Automail script and AniList pages
 // @author       EastRane
-// @version      1.1.0
+// @version      1.2.0
 // @match        https://anilist.co/*
 // @grant        GM_getValue
 // @grant        GM_setValue
