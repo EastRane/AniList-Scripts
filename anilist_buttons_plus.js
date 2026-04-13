@@ -3,9 +3,8 @@
 // @name        AniList Buttons Plus
 // @include     https://anilist.co/*
 // @description A script that adds buttons on Anilist for searching various sites.
-// @version     2.820-east
+// @version     2.820-east2
 // @grant       GM_addStyle
-// @grant       window.onurlchange
 // @namespace   https://greasyfork.org/users/18375
 // ==/UserScript==
 
@@ -13,82 +12,65 @@
     'use strict';
 
     GM_addStyle(`
-    .anilist-button-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-top: 10px;
-        margin-bottom: 8px;
-    }
-    .anilist-button-container a {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2px 6px;
-        border-radius: 4px;
-        text-decoration: none;
-        background: #176297;
-        border: 1px solid #1B2F7B;
-        color: #fff;
-        transition: background 0.2s;
-        font-size: 12px;
-    }
-    .anilist-button-container a:hover {
-        background: #0f4064;
-    }
-    .anilist-button-container img {
-        width: 18px;
-        height: 18px;
-        margin-right: 4px;
-    }
-`);
+        .anilist-button-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 6px;
+            margin-bottom: 4px;
+        }
+        .anilist-button-container a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2px 6px;
+            border-radius: 3px;
+            text-decoration: none;
+            background: color-mix(in srgb, rgba(var(--color-blue)), transparent 40%);
+            color: #fff;
+            transition: background 0.2s;
+            font-size: 12px;
+            height: 22px;
+        }
+        .anilist-button-container a:hover {
+            color: #fff;
+        }
 
-    let outerButtonsDiv = null;
-    let lastTitle = '';
+        .anilist-button-container img {
+            width: 18px;
+            height: 18px;
+            margin-right: 4px;
+        }
+    `);
 
-    function getButtons(title) {
+    function getButtons(title, isManga) {
         const encoded = encodeURIComponent(title);
-        const isManga = window.location.pathname.includes('/manga/');
-
-        const buttons = [];
+        const buttons =[];
 
         if (!isManga) {
             buttons.push(
-				{
-					title: "Animelib",
-					url: `https://animelib.org/ru/catalog?q=${encoded}`
-				},
-				{
-					title: "AnimeKai",
-					url: `https://animekai.to/browser?keyword=${encoded}`
-				},
-				{
-					title: "HiAnime",
-					url: `https://hianime.to/search?keyword=${encoded}`
-				},
-				{
-					title: "aniDB",
-					url: `https://anidb.net/anime/?adb.search=${encoded}&do.search=1`
-				}
-			);
+                { title: "Animelib", url: `https://animelib.org/ru/catalog?q=${encoded}` },
+                { title: "AnimeKai", url: `https://animekai.to/browser?keyword=${encoded}` },
+                { title: "HiAnime", url: `https://hianime.to/search?keyword=${encoded}` },
+                { title: "aniDB", url: `https://anidb.net/anime/?adb.search=${encoded}&do.search=1` }
+            );
         }
 
-        buttons.push(
-            {
-                title: "Nyaa",
-                url: isManga ?
-                    `https://nyaa.si/?f=0&c=3_1&q=${encoded}` :
-                    `https://nyaa.si/?f=0&c=1_2&q=${encoded}`
-            }
-        )
+        buttons.push({
+            title: "Nyaa",
+            url: isManga ?
+                `https://nyaa.si/?f=0&c=3_1&q=${encoded}` :
+                `https://nyaa.si/?f=0&c=1_2&q=${encoded}`
+        });
 
         return buttons;
     }
 
-    function createButtons(title) {
-        const buttonsData = getButtons(title);
-        outerButtonsDiv = document.createElement('div');
+    function createButtons(title, isManga) {
+        const buttonsData = getButtons(title, isManga);
+        const outerButtonsDiv = document.createElement('div');
         outerButtonsDiv.className = 'anilist-button-container';
+        outerButtonsDiv.dataset.title = title;
 
         buttonsData.forEach(b => {
             const btn = document.createElement('a');
@@ -97,7 +79,8 @@
             btn.title = b.title;
 
             const icon = document.createElement('img');
-            icon.src = `https://www.google.com/s2/favicons?domain=${b.url.match(/:\/\/(www\.)?(.[^/]+)/)[2]}`;
+            const domain = b.url.match(/:\/\/(www\.)?(.[^/]+)/)[2];
+            icon.src = `https://www.google.com/s2/favicons?domain=${domain}`;
             btn.appendChild(icon);
 
             const text = document.createElement('span');
@@ -110,12 +93,22 @@
         return outerButtonsDiv;
     }
 
-    function insertButtons() {
-        const path = window.location.pathname;
-        if (!/^\/(anime|manga)\/\d+/.test(path)) {
-            return;
+    let lastUrl = '';
+
+    function checkAndInject() {
+        const currentUrl = window.location.href;
+
+        if (currentUrl !== lastUrl) {
+            lastUrl = currentUrl;
+            document.querySelectorAll('.anilist-button-container').forEach(el => el.remove());
         }
 
+        const path = window.location.pathname;
+        const animeMatch = path.match(/^\/anime\/\d+/);
+        const mangaMatch = path.match(/^\/manga\/\d+/);
+        if (!animeMatch && !mangaMatch) return;
+
+        const isManga = !!mangaMatch;
         const header = document.querySelector('div.content h1');
         if (!header) return;
 
@@ -127,55 +120,41 @@
 
         if (!currentTitle) return;
 
-        const parent = header.parentNode;
-        const existingButtons = parent.querySelector('.anilist-button-container');
-
+        const existingButtons = document.querySelector('.anilist-button-container');
         const isCorrectTitle = existingButtons && existingButtons.dataset.title === currentTitle;
 
-        if (!existingButtons || !isCorrectTitle) {
-            if (existingButtons) existingButtons.remove();
+        if (existingButtons && isCorrectTitle) return;
 
-            const buttonsBlock = createButtons(currentTitle);
-            buttonsBlock.dataset.title = currentTitle;
+        if (existingButtons) existingButtons.remove();
+
+        const buttonsBlock = createButtons(currentTitle, isManga);
+
+        const scoresBlock = header.parentNode.querySelector('.user-script-ani-list-unlimited-scores');
+        if (scoresBlock) {
+            scoresBlock.parentNode.insertBefore(buttonsBlock, scoresBlock.nextSibling);
+        } else {
             header.parentNode.insertBefore(buttonsBlock, header.nextSibling);
         }
     }
 
-    // SPA-aware MutationObserver
-    const contentRoot = document.querySelector('div.content') || document.body;
+    function debounce(func, wait) {
+        let timeout;
+        return function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, arguments), wait);
+        };
+    }
+
+    const debouncedInject = debounce(checkAndInject, 100);
     const observer = new MutationObserver(() => {
-        insertButtons();
+        debouncedInject();
     });
-    observer.observe(contentRoot, {
+
+    observer.observe(document.body, {
         childList: true,
         subtree: true
     });
 
-    // hijack history.pushState/replaceState
-    const _wr = type => {
-        const orig = history[type];
-        return function() {
-            const rv = orig.apply(this, arguments);
-            window.dispatchEvent(new Event(type));
-            return rv;
-        };
-    };
-    history.pushState = _wr("pushState");
-    history.replaceState = _wr("replaceState");
+    debouncedInject();
 
-    let lastPath = location.pathname + location.search + location.hash;
-
-    function handleUrlChange() {
-        const cur = location.pathname + location.search + location.hash;
-        if (cur === lastPath) return;
-        lastPath = cur;
-        insertButtons();
-    }
-
-    window.addEventListener("pushState", handleUrlChange);
-    window.addEventListener("replaceState", handleUrlChange);
-    window.addEventListener("popstate", handleUrlChange);
-    document.addEventListener("click", () => setTimeout(handleUrlChange, 50), true);
-
-    insertButtons();
 })();
