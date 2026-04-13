@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AniList Shikimori History Viewer
 // @namespace    anilist-shikimori-history-viewer
-// @version      1.1.0
+// @version      1.1.1
 // @description  Shows history from exported Shikimori History JSON on Anilist social page
 // @author       you
 // @match        https://anilist.co/*
@@ -166,45 +166,69 @@
 		}
 
 		function renderEventsBlock(events, timelineElement) {
-			if (document.getElementById("shikiHistoryBlock")) return;
+            if (document.getElementById("shikiHistoryBlock")) return;
 
-			const container = document.createElement("div");
-			container.id = "shikiHistoryBlock";
-			container.style.marginTop = "12px";
+            const container = document.createElement("div");
+            container.id = "shikiHistoryBlock";
+            container.style.marginTop = "12px";
 
-			const title = document.createElement("h2");
-			title.textContent = "Shikimori History";
-			title.style.marginTop = "20px";
-			container.appendChild(title);
+            const title = document.createElement("h2");
+            title.textContent = "Shikimori History";
+            title.style.marginTop = "20px";
+            container.appendChild(title);
 
-			const listContainer = document.createElement("div");
-			container.appendChild(listContainer);
-			timelineElement.parentNode.insertBefore(container, timelineElement.nextSibling);
+            const listContainer = document.createElement("div");
+            container.appendChild(listContainer);
+            timelineElement.parentNode.insertBefore(container, timelineElement.nextSibling);
 
-			for (const [dateStr, action] of events) {
-				const entry = document.createElement("div");
-				entry.className = "hohTimelineEntry";
+            for (const [dateStr, action] of events) {
+                const entry = document.createElement("div");
+                entry.className = "hohTimelineEntry";
 
-				const actionNode = document.createElement("a");
-				actionNode.className = "newTab";
-				actionNode.href = "#";
-				actionNode.textContent = action;
-				actionNode.style.color = "inherit";
-				actionNode.style.textDecoration = "none";
+                const actionNode = document.createElement("a");
+                actionNode.className = "newTab";
+                actionNode.href = "#";
+                actionNode.textContent = action;
+                actionNode.style.color = "inherit";
+                actionNode.style.textDecoration = "none";
 
-				const {
-					short,
-					full
-				} = formatTimelineDate_isoInput(dateStr);
-				const dateNode = document.createElement("span");
-				dateNode.textContent = " " + short;
-				dateNode.title = full;
+                const {
+                    short,
+                    full
+                } = formatTimelineDate_isoInput(dateStr);
 
-				entry.appendChild(actionNode);
-				entry.appendChild(dateNode);
-				listContainer.appendChild(entry);
-			}
-		}
+                const dateNode = document.createElement("span");
+                dateNode.textContent = " " + short;
+                dateNode.title = dateStr;
+                dateNode.style.cursor = "pointer";
+
+                dateNode.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    try {
+                        const dateObj = new Date(dateStr);
+                        if (!isNaN(dateObj.getTime())) {
+                            let iso = dateObj.toISOString();
+                            const formattedTimestamp = iso.split('.')[0] + "+00:00";
+
+                            navigator.clipboard.writeText(formattedTimestamp).then(() => {
+                                const originalText = dateNode.textContent;
+                                dateNode.textContent = " ✅";
+
+                                setTimeout(() => {
+                                    dateNode.textContent = originalText;
+                                }, 1000);
+                            });
+                        }
+                    } catch (err) {
+                        console.error("Error occured while copying text: ", err);
+                    }
+                });
+
+                entry.appendChild(actionNode);
+                entry.appendChild(dateNode);
+                listContainer.appendChild(entry);
+            }
+        }
 
 		(function hijackHistoryEvents() {
 			const _wr = type => {
