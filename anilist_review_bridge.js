@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AniList Review Bridge
 // @namespace    anilist-review-bridge
-// @version      1.0.1
+// @version      1.0.2
 // @description  Adds a review link and Obsidian util tools
 // @author       EastRane
 // @match        https://anilist.co/*
@@ -159,7 +159,7 @@
     const h1 = document.querySelector('div.content h1');
     if (!h1) return;
 
-    const targetTitle = document.querySelector('.anilist-triple-title') || h1;
+    const targetTitle = document.querySelector('.amt-wrap') || h1;
     const aka = getAkaTitles(media.id);
 
     let wrapper = document.getElementById('obsidian-copy-btns');

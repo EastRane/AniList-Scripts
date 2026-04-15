@@ -21,7 +21,7 @@ Small fixes to [hoh's Automail script](https://github.com/hohMiyazawa/Automail) 
 - Dynamic sidebar margin resize based on scripts' additions to a header / AniList
 
 ## AniList Multilingual Titles
-Shows "Romaji / English / Russian" titles on anime/manga pages.
+Shows multilingual titles on anime/manga pages.
 
 ## Shikimori History Exporter/Viewer
 Lets you view your Shikimori history on the AniList Social tab of an anime or manga page (of course client-sided).
