@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          AniList Unlimited - Score in Header
 // @namespace     https://github.com/mysticflute
-// @version       1.0.3-east2
+// @version       1.0.3-east3
 // @description   For anilist.co, make manga and anime scores more prominent by moving them to the title.
 // @author        mysticflute, EastRane
 // @homepageURL   https://github.com/mysticflute/ani-list-unlimited
@@ -11,6 +11,7 @@
 // @connect       api.jikan.moe
 // @connect       kitsu.io
 // @connect       shikimori.one
+// @connect       api.hikka.io
 // @grant         GM_xmlhttpRequest
 // @grant         GM_setValue
 // @grant         GM_getValue
@@ -36,6 +37,9 @@
     /** When true, adds the Shikimori score to the header. */
     addShikimoriScoreToHeader: true,
 
+    /** When true, adds the Hikka score to the header. */
+    addHikkaScoreToHeader: true,
+
     /** When true, show the smile/neutral/frown icons next to the AniList score. */
     showIconWithAniListScore: false,
 
@@ -55,11 +59,11 @@
     MAL_API: 'https://api.jikan.moe/v4',
     KITSU_API: 'https://kitsu.io/api/edge',
     SHIKIMORI_API: 'https://shikimori.one/api',
+    HIKKA_API: 'https://api.hikka.io/integrations/mal',
     ANI_LIST_URL_PATH_REGEX: /(anime|manga)\/([0-9]+)/i,
     LOG_PREFIX: '[AniList Unlimited Score in Header]',
     CLASS_PREFIX: 'user-script-ani-list-unlimited',
-    CUSTOM_ELEMENT_TITLE:
-      '',
+    CUSTOM_ELEMENT_TITLE: '',
     DEBUG: false,
   };
 
@@ -200,6 +204,7 @@
                         idMal
                         averageScore
                         meanScore
+                        format
                         title {
                           english
                           romaji
@@ -338,26 +343,60 @@
     },
 
     async loadShikimoriData(type, shikimoriId) {
-        try {
-            const response = await utils.xhr({
-                url: `${constants.SHIKIMORI_API}/${type === 'anime' ? 'animes' : 'mangas'}/${shikimoriId}`,
-                method: 'GET',
-                responseType: 'json',
-            });
-            utils.debug('Shikimori API response:', response);
+      try {
+        const response = await utils.xhr({
+          url: `${constants.SHIKIMORI_API}/${type === 'anime' ? 'animes' : 'mangas'}/${shikimoriId}`,
+          method: 'GET',
+          responseType: 'json',
+        });
+        utils.debug('Shikimori API response:', response);
 
-            return response;
-        } catch (res) {
-            const message = `Shikimori API request failed for media with ID '${shikimoriId}'`;
-            utils.groupError(
-                message,
-                `Request failed with status ${res.status}`,
-                res.response ? res.response.error || res.response.message : res
-            );
-            const error = new Error(message);
-            error.response = res;
-            throw error;
-        }
+        return response;
+      } catch (res) {
+        const message = `Shikimori API request failed for media with ID '${shikimoriId}'`;
+        utils.groupError(
+          message,
+          `Request failed with status ${res.status}`,
+          res.response ? res.response.error || res.response.message : res
+        );
+        const error = new Error(message);
+        error.response = res;
+        throw error;
+      }
+    },
+
+    /**
+     * anime -> anime, NOVEL -> novel, other -> manga
+     */
+    getHikkaType(anilistType, anilistFormat) {
+      if (anilistType === 'anime') return 'anime';
+      if (anilistFormat && anilistFormat.toUpperCase() === 'NOVEL') return 'novel';
+      return 'manga';
+    },
+
+    async loadHikkaData(anilistType, anilistFormat, malId) {
+      const hikkaType = api.getHikkaType(anilistType, anilistFormat);
+
+      try {
+        const response = await utils.xhr({
+          url: `${constants.HIKKA_API}/${hikkaType}/${malId}`,
+          method: 'GET',
+          responseType: 'json',
+        });
+        utils.debug('Hikka API response:', response);
+
+        return response;
+      } catch (res) {
+        const message = `Hikka API request failed for MAL ID '${malId}' (type: ${hikkaType})`;
+        utils.groupError(
+          message,
+          `Request failed with status ${res.status}`,
+          res.response ? res.response.error || res.response.message : res
+        );
+        const error = new Error(message);
+        error.response = res;
+        throw error;
+      }
     },
   };
 
@@ -402,29 +441,29 @@
       observer.observe(target, { childList: true, characterData: true });
     }
 
-      async applyPageModifications() {
-          const pathname = window.location.pathname;
-          const matches = constants.ANI_LIST_URL_PATH_REGEX.exec(pathname);
+    async applyPageModifications() {
+      const pathname = window.location.pathname;
+      const matches = constants.ANI_LIST_URL_PATH_REGEX.exec(pathname);
 
-          if (!matches) {
-              this.lastCheckedMediaId = null;
-              return;
-          }
+      if (!matches) {
+        this.lastCheckedMediaId = null;
+        return;
+      }
 
-          const mediaId = matches[2];
+      const mediaId = matches[2];
 
-          if (this.lastCheckedMediaId === mediaId) {
-              return;
-          }
+      if (this.lastCheckedMediaId === mediaId) {
+        return;
+      }
 
-          this.lastCheckedMediaId = mediaId;
+      this.lastCheckedMediaId = mediaId;
 
-          const oldContainer = document.querySelector(`.${constants.CLASS_PREFIX}-scores`);
-          if (oldContainer) oldContainer.remove();
+      const oldContainer = document.querySelector(`.${constants.CLASS_PREFIX}-scores`);
+      if (oldContainer) oldContainer.remove();
 
-          const pageType = matches[1];
+      const pageType = matches[1];
 
-          const aniListData = await api.loadAniListData(pageType, mediaId);
+      const aniListData = await api.loadAniListData(pageType, mediaId);
 
       if (this.config.addAniListScoreToHeader) {
         this.addAniListScoreToHeader(pageType, mediaId, aniListData);
@@ -440,6 +479,10 @@
 
       if (this.config.addShikimoriScoreToHeader) {
         this.addShikimoriScoreToHeader(pageType, mediaId, aniListData);
+      }
+
+      if (this.config.addHikkaScoreToHeader) {
+        this.addHikkaScoreToHeader(pageType, mediaId, aniListData);
       }
     }
 
@@ -579,79 +622,140 @@
         });
     }
 
-	async addShikimoriScoreToHeader(pageType, mediaId, aniListData) {
-		const slot = 4;
-		const source = 'Shikimori';
+    async addShikimoriScoreToHeader(pageType, mediaId, aniListData) {
+      const slot = 4;
+      const source = 'Shikimori';
 
-		const shikimoriId = aniListData.idMal;
+      const shikimoriId = aniListData.idMal;
 
-		if (!shikimoriId) {
-			utils.error(`no ${source} id found for media ${mediaId}`);
-			return this.clearHeaderSlot(slot);
-		}
+      if (!shikimoriId) {
+        utils.error(`no ${source} id found for media ${mediaId}`);
+        return this.clearHeaderSlot(slot);
+      }
 
-		if (this.config.showLoadingIndicators) {
-			await this.showSlotLoading(slot);
-		}
+      if (this.config.showLoadingIndicators) {
+        await this.showSlotLoading(slot);
+      }
 
-		api.loadShikimoriData(pageType, shikimoriId)
-			.then(data => {
-				if (!data || !data.score) {
-					utils.error(`no ${source} score found for media ${mediaId}`);
-					return this.clearHeaderSlot(slot);
-				}
+      api.loadShikimoriData(pageType, shikimoriId)
+        .then(data => {
+          if (!data || !data.score) {
+            utils.error(`no ${source} score found for media ${mediaId}`);
+            return this.clearHeaderSlot(slot);
+          }
 
-				let shikiScore;
-				let totalCount = 0;
+          let shikiScore;
+          let totalCount = 0;
 
-				if (data.rates_scores_stats && data.rates_scores_stats.length > 0) {
-					let sumScore = 0;
+          if (data.rates_scores_stats && data.rates_scores_stats.length > 0) {
+            let sumScore = 0;
 
-					for (let i = 0; i < data.rates_scores_stats.length; i++) {
-						const scoreData = data.rates_scores_stats[i];
-						sumScore += scoreData.value * Number(scoreData.name);
-						totalCount += scoreData.value;
-					}
+            for (let i = 0; i < data.rates_scores_stats.length; i++) {
+              const scoreData = data.rates_scores_stats[i];
+              sumScore += scoreData.value * Number(scoreData.name);
+              totalCount += scoreData.value;
+            }
 
-					shikiScore = sumScore / totalCount;
-				} else {
-					shikiScore = parseFloat(data.score);
-				}
+            shikiScore = sumScore / totalCount;
+          } else {
+            shikiScore = parseFloat(data.score);
+          }
 
-				const score = shikiScore ? shikiScore.toFixed(2) : '(N/A)';
-				const href = `https://shikimori.one/${pageType === 'anime' ? 'animes' : 'mangas'}/${shikimoriId}`;
+          const score = shikiScore ? shikiScore.toFixed(2) : '(N/A)';
+          const href = `https://shikimori.one/${pageType === 'anime' ? 'animes' : 'mangas'}/${shikimoriId}`;
 
-				let info = '';
-				if (data.rates_scores_stats && data.rates_scores_stats.length > 0) {
-					info = ` (based on ${totalCount} ratings)`;
-				} else if (data.score) {
-					info = ' (general score)';
-				}
+          let info = '';
+          if (data.rates_scores_stats && data.rates_scores_stats.length > 0) {
+            info = ` (based on ${totalCount} ratings)`;
+          } else if (data.score) {
+            info = ' (general score)';
+          }
 
-				return this.addToHeader({ slot, source, score, href, info });
-			})
-			.catch(e => {
-				utils.error(
-					`Unable to add the ${source} score to the header: ${e.message}`
-				);
+          return this.addToHeader({ slot, source, score, href, info });
+        })
+        .catch(e => {
+          utils.error(
+            `Unable to add the ${source} score to the header: ${e.message}`
+          );
 
-				if (e.response && e.response.status === 429) {
-					return this.addToHeader({
-						slot,
-						source,
-						score: 'Unavailable*',
-						info: ': Temporarily unavailable due to rate-limiting. Reload in a few seconds to try again',
-					});
-				} else if (e.response && e.response.status === 404) {
-					return this.addToHeader({
-						slot,
-						source,
-						score: 'Not Found',
-						info: ': Entry not found on Shikimori',
-					});
-				}
-			});
-	}
+          if (e.response && e.response.status === 429) {
+            return this.addToHeader({
+              slot,
+              source,
+              score: 'Unavailable*',
+              info: ': Temporarily unavailable due to rate-limiting. Reload in a few seconds to try again',
+            });
+          } else if (e.response && e.response.status === 404) {
+            return this.addToHeader({
+              slot,
+              source,
+              score: 'Not Found',
+              info: ': Entry not found on Shikimori',
+            });
+          }
+        });
+    }
+
+    async addHikkaScoreToHeader(pageType, mediaId, aniListData) {
+        const slot = 5;
+        const source = 'Hikka';
+
+        const malId = aniListData.idMal;
+
+        if (!malId) {
+            utils.error(`no MAL id found for media ${mediaId}, cannot fetch ${source} score`);
+            return this.clearHeaderSlot(slot);
+        }
+
+        if (this.config.showLoadingIndicators) {
+            await this.showSlotLoading(slot);
+        }
+
+        const anilistFormat = aniListData.format || null;
+
+        api.loadHikkaData(pageType, anilistFormat, malId)
+            .then(data => {
+            if (!data || data.native_score == null || data.native_scored_by === 0) {
+                utils.error(`no native ${source} score found for media ${mediaId}`);
+                return this.clearHeaderSlot(slot);
+            }
+
+            const rawScore = parseFloat(data.native_score);
+            const score = !isNaN(rawScore) ? rawScore.toFixed(2) : '(N/A)';
+
+            const hikkaType = api.getHikkaType(pageType, anilistFormat);
+            const href = data.slug
+            ? `https://hikka.io/${hikkaType}/${data.slug}`
+            : `https://hikka.io`;
+
+            const info = data.native_scored_by
+            ? ` (based on ${data.native_scored_by} ratings)`
+            : '';
+
+            return this.addToHeader({ slot, source, score, href, info });
+        })
+            .catch(e => {
+            utils.error(
+                `Unable to add the ${source} score to the header: ${e.message}`
+            );
+
+            if (e.response && e.response.status === 404) {
+                return this.addToHeader({
+                    slot,
+                    source,
+                    score: 'Not Found',
+                    info: ': Entry not found on Hikka',
+                });
+            } else if (e.response && e.response.status === 429) {
+                return this.addToHeader({
+                    slot,
+                    source,
+                    score: 'Unavailable*',
+                    info: ': Temporarily unavailable due to rate-limiting. Reload in a few seconds to try again',
+                });
+            }
+        });
+    }
 
     async showSlotLoading(slot) {
       const slotEl = await this.getSlotElement(slot);
@@ -724,7 +828,7 @@
         containerEl.style.marginTop = '4px';
         containerEl.style.alignItems = 'center';
 
-        const numSlots = 4;
+        const numSlots = 5;
         for (let i = 0; i < numSlots; i++) {
           const slotEl = document.createElement('div');
           slotEl.className = `${constants.CLASS_PREFIX}-slot${i + 1}`;
