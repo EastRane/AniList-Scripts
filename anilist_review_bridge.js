@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AniList Review Bridge
 // @namespace    anilist-review-bridge
-// @version      1.0.0
+// @version      1.0.1
 // @description  Adds a review link and Obsidian util tools
 // @author       EastRane
 // @match        https://anilist.co/*
@@ -44,6 +44,16 @@
 
   function getMalId(id) { try { return JSON.parse(localStorage.getItem('east_'+id))?.data?.idMal || null; } catch { return null; } }
   function getRomajiTitle(id) { try { return JSON.parse(localStorage.getItem('east_'+id))?.data?.romaji || null; } catch { return null; } }
+  function getAkaTitles(id) {
+    try {
+        const data = JSON.parse(localStorage.getItem('east_' + id))?.data;
+        if (!data) return [];
+        const aka = [data.english, data.russian, data.ukrainian].filter(Boolean);
+        return aka;
+    } catch {
+        return [];
+    }
+  }
   function isObsidianEnabled() { return localStorage.getItem(STORAGE_KEY_BTNS) === 'true'; }
 
   function ensureStyles() {
@@ -150,6 +160,7 @@
     if (!h1) return;
 
     const targetTitle = document.querySelector('.anilist-triple-title') || h1;
+    const aka = getAkaTitles(media.id);
 
     let wrapper = document.getElementById('obsidian-copy-btns');
     if (wrapper) {
@@ -181,20 +192,29 @@
     };
 
     obsidianBtns.appendChild(createBtn('📄', 'Copy filename', () => `${media.id}-${toSlug(title)}`));
-    obsidianBtns.appendChild(createBtn('📋', 'Copy frontmatter', () => `---
-title: "${title}"
+        obsidianBtns.appendChild(createBtn('📋', 'Copy frontmatter', () => {
+    const aka = getAkaTitles(media.id);
+
+    const escapeYaml = (str) => str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+    const akaBlock = aka.length > 0
+        ? `aka:\n${aka.map(t => `  - "${escapeYaml(t)}"`).join('\n')}\n`
+        : '';
+    return `---
+title: "${escapeYaml(title)}"
 category: ${media.category}
 score:
 locale:
 tags:
   -
 spoiler: false
-created: ${getCurrentISODate()}
+${akaBlock}created: ${getCurrentISODate()}
 modified:
 ids:
   anilist: ${media.id}
   mal: ${malId || ''}
----`));
+---`;
+}));
     obsidianBtns.appendChild(createBtn('💬', 'Copy commit (Alt+Click for update)', (e) => `${e.altKey ? 'update' : 'add'}(${media.category}): ${toSlug(title)}`));
 
     const toggle = document.createElement('span');
