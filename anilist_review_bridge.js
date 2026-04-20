@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AniList Review Bridge
 // @namespace    anilist-review-bridge
-// @version      1.0.2
+// @version      1.0.3
 // @description  Adds a review link and Obsidian util tools
 // @author       EastRane
 // @match        https://anilist.co/*
@@ -19,6 +19,7 @@
   const CACHE_TTL_404_MS = 1 * 60 * 1000;
 
   const activeFetches = new Set();
+  const activeApiPromises = new Map();
 
   const REVIEW_ICON_SVG = `
     <svg viewBox="0 0 512 512" style="width: 15px; height: 15px; fill: currentColor;">
@@ -42,18 +43,74 @@
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}${(-now.getTimezoneOffset()>=0?'+':'-')}${pad(Math.floor(Math.abs(now.getTimezoneOffset())/60))}:${pad(Math.abs(now.getTimezoneOffset())%60)}`;
   }
 
-  function getMalId(id) { try { return JSON.parse(localStorage.getItem('east_'+id))?.data?.idMal || null; } catch { return null; } }
-  function getRomajiTitle(id) { try { return JSON.parse(localStorage.getItem('east_'+id))?.data?.romaji || null; } catch { return null; } }
+  async function fetchAniListData(type, id) {
+    const cacheKey = 'east_' + id;
+    const cachedItem = localStorage.getItem(cacheKey);
+    let existingData = {};
+
+    if (cachedItem) {
+      try {
+        existingData = JSON.parse(cachedItem).data || {};
+        if (existingData.format) return existingData;
+      } catch (e) {}
+    }
+
+    const fetchKey = type + id;
+    if (activeApiPromises.has(fetchKey)) return activeApiPromises.get(fetchKey);
+
+    const promise = (async () => {
+      const query = `
+        query ($id: Int, $type: MediaType) {
+          Media (id: $id, type: $type) {
+            idMal
+            format
+            title {
+              english
+              romaji
+            }
+          }
+        }
+      `;
+      const variables = { id: parseInt(id), type: type.toUpperCase() };
+
+      try {
+        const res = await fetch('https://graphql.anilist.co', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ query, variables })
+        });
+        if (!res.ok) return existingData;
+
+        const json = await res.json();
+        const media = json.data.Media;
+
+        const merged = { ...existingData, format: media.format };
+        if (media.idMal) merged.idMal = media.idMal;
+        if (media.title?.english) merged.english = media.title.english;
+        if (media.title?.romaji) merged.romaji = media.title.romaji;
+
+        localStorage.setItem(cacheKey, JSON.stringify({ data: merged, timestamp: Date.now() }));
+        return merged;
+      } catch (e) {
+        console.error('AniList Review Bridge API Error:', e);
+        return existingData;
+      }
+    })();
+
+    activeApiPromises.set(fetchKey, promise);
+    const result = await promise;
+    activeApiPromises.delete(fetchKey);
+    return result;
+  }
+
   function getAkaTitles(id) {
     try {
         const data = JSON.parse(localStorage.getItem('east_' + id))?.data;
         if (!data) return [];
-        const aka = [data.english, data.russian, data.ukrainian].filter(Boolean);
-        return aka;
-    } catch {
-        return [];
-    }
+        return [data.english, data.russian, data.ukrainian].filter(Boolean);
+    } catch { return []; }
   }
+
   function isObsidianEnabled() { return localStorage.getItem(STORAGE_KEY_BTNS) === 'true'; }
 
   function ensureStyles() {
@@ -86,18 +143,15 @@
     document.head.appendChild(s);
   }
 
-  async function fetchReviewInfo(media, url) {
-    const cacheKey = `${REVIEW_CACHE_PREFIX}${media.category}_${media.id}`;
+  async function fetchReviewInfo(media, displayCategory, url) {
+    const cacheKey = `${REVIEW_CACHE_PREFIX}${displayCategory}_${media.id}`;
     const cached = localStorage.getItem(cacheKey);
 
     if (cached) {
       try {
         const p = JSON.parse(cached);
         const currentTTL = p.data.found ? CACHE_TTL_MS : CACHE_TTL_404_MS;
-
-        if (Date.now() - p.timestamp < currentTTL) {
-          return p.data;
-        }
+        if (Date.now() - p.timestamp < currentTTL) return p.data;
       } catch (e) {
         localStorage.removeItem(cacheKey);
       }
@@ -108,14 +162,9 @@
         const res = await fetch(url);
 
         if (!res.ok) {
-          if (res.status === 404) {
-            const r = { found: false };
-            localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: r }));
-            resolve(r);
-          } else {
-            resolve({ found: false });
-          }
-          return;
+          const r = { found: false };
+          if (res.status === 404) localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: r }));
+          resolve(r); return;
         }
 
         const html = await res.text();
@@ -142,9 +191,7 @@
         if (tags.includes('review')) type = 'Review';
         else if (tags.includes('note')) type = 'Note';
         else if (tags.includes('log')) type = 'Log';
-        else if (tags.length > 0) {
-            type = tags[0].charAt(0).toUpperCase() + tags[0].slice(1);
-        }
+        else if (tags.length > 0) type = tags[0].charAt(0).toUpperCase() + tags[0].slice(1);
 
         const result = { found: true, created, updated, type };
         localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: result }));
@@ -155,12 +202,11 @@
     });
   }
 
-  function injectObsidian(title, media, malId) {
+  function injectObsidian(title, media, malId, displayCategory) {
     const h1 = document.querySelector('div.content h1');
     if (!h1) return;
 
     const targetTitle = document.querySelector('.amt-wrap') || h1;
-    const aka = getAkaTitles(media.id);
 
     let wrapper = document.getElementById('obsidian-copy-btns');
     if (wrapper) {
@@ -192,30 +238,30 @@
     };
 
     obsidianBtns.appendChild(createBtn('📄', 'Copy filename', () => `${media.id}-${toSlug(title)}`));
-        obsidianBtns.appendChild(createBtn('📋', 'Copy frontmatter', () => {
-    const aka = getAkaTitles(media.id);
 
-    const escapeYaml = (str) => str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-
-    const akaBlock = aka.length > 0
-        ? `aka:\n${aka.map(t => `  - "${escapeYaml(t)}"`).join('\n')}\n`
-        : '';
-    return `---
+    obsidianBtns.appendChild(createBtn('📋', 'Copy frontmatter', () => {
+        const aka = getAkaTitles(media.id);
+        const escapeYaml = (str) => str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        const akaBlock = aka.length > 0
+            ? `aka:\n${aka.map(t => `  - "${escapeYaml(t)}"`).join('\n')}\n`
+            : '';
+        return `---
 title: "${escapeYaml(title)}"
-category: ${media.category}
+${akaBlock}category: ${displayCategory}
 score:
 locale:
 tags:
   -
 spoiler: false
-${akaBlock}created: ${getCurrentISODate()}
+created: ${getCurrentISODate()}
 modified:
 ids:
   anilist: ${media.id}
   mal: ${malId || ''}
 ---`;
-}));
-    obsidianBtns.appendChild(createBtn('💬', 'Copy commit (Alt+Click for update)', (e) => `${e.altKey ? 'update' : 'add'}(${media.category}): ${toSlug(title)}`));
+    }));
+
+    obsidianBtns.appendChild(createBtn('💬', 'Copy commit (Alt+Click for update)', (e) => `${e.altKey ? 'update' : 'add'}(${displayCategory}): ${toSlug(title)}`));
 
     const toggle = document.createElement('span');
     toggle.innerHTML = '⚙️';
@@ -234,18 +280,18 @@ ids:
     targetTitle.appendChild(wrapper);
   }
 
-async function injectReview(title, media) {
+  async function injectReview(title, media, displayCategory) {
     if (document.getElementById('east-review-action')) return;
     const actions = document.querySelector('.cover-wrap-inner .actions');
     if (!actions) return;
 
-    const fetchUrl = `${NOTES_BASE}/${media.category}/${media.id}-${toSlug(title)}`;
+    const fetchUrl = `${NOTES_BASE}/${displayCategory}/${media.id}-${toSlug(title)}`;
 
     if (activeFetches.has(fetchUrl)) return;
     activeFetches.add(fetchUrl);
 
     try {
-      const info = await fetchReviewInfo(media, fetchUrl);
+      const info = await fetchReviewInfo(media, displayCategory, fetchUrl);
 
       const currentMedia = getMediaInfo();
       if (!currentMedia || currentMedia.id !== media.id) return;
@@ -280,17 +326,27 @@ async function injectReview(title, media) {
     }
   }
 
-  function run() {
+  async function run() {
     const media = getMediaInfo();
     if (!media) return;
     ensureStyles();
 
+    const apiData = await fetchAniListData(media.category, media.id);
+
+    let displayCategory = 'manga';
+    if (media.category === 'anime') {
+        displayCategory = 'anime';
+    } else if (apiData.format && apiData.format.toUpperCase() === 'NOVEL') {
+        displayCategory = 'ranobe';
+    }
+
     const h1 = document.querySelector('div.content h1');
     if (h1 && h1.textContent.trim()) {
-      const title = getRomajiTitle(media.id) || h1.childNodes[0].textContent.trim();
-      const malId = getMalId(media.id);
-      injectObsidian(title, media, malId);
-      injectReview(title, media);
+      const title = apiData.romaji || h1.childNodes[0].textContent.trim();
+      const malId = apiData.idMal || null;
+
+      injectObsidian(title, media, malId, displayCategory);
+      injectReview(title, media, displayCategory);
     }
   }
 
