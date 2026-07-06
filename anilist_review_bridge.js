@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AniList Review Bridge
 // @namespace    anilist-review-bridge
-// @version      1.0.3
+// @version      1.0.4
 // @description  Adds a review link and Obsidian util tools
 // @author       EastRane
 // @match        https://anilist.co/*
@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  const NOTES_BASE = 'https://notes.eastrane.top/reviews';
+  const NOTES_BASE = 'https://notes.eastrane.com/reviews';
   const STORAGE_KEY_BTNS = 'east_obsidian_btns_enabled';
   const REVIEW_CACHE_PREFIX = 'east_rev_';
 
