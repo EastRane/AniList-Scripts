@@ -161,7 +161,7 @@
         return wrap;
     }
 
-        function fillWrap(wrap, { romaji, english, russian, ukrainian }, fallbackText) {
+    function fillWrap(wrap, { romaji, english, russian, ukrainian }, fallbackText) {
         const titleEl = wrap.querySelector('.amt-title');
         titleEl.textContent = romaji || fallbackText;
 

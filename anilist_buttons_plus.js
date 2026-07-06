@@ -1,9 +1,9 @@
 // ==UserScript==
-// @author      Deathwing, EastRane
 // @name        AniList Buttons Plus
+// @author      Deathwing, EastRane
 // @include     https://anilist.co/*
 // @description A script that adds buttons on Anilist for searching various sites.
-// @version     2.820-1.0.3
+// @version     2.820-1.0.4
 // @grant       GM_addStyle
 // @namespace   https://greasyfork.org/users/18375
 // ==/UserScript==
@@ -79,7 +79,7 @@
             btn.title = b.title;
 
             const icon = document.createElement('img');
-            const domain = b.url.match(/:\/\/(www\.)?(.[^/]+)/)[2];
+            const domain = b.url.match(/:\/\/(www\.)?(.[^/]+)/)?.[2] || 'www.anilist.co';
             icon.src = `https://www.google.com/s2/favicons?domain=${domain}`;
             btn.appendChild(icon);
 

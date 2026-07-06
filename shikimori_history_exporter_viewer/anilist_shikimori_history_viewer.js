@@ -3,7 +3,7 @@
 // @namespace    anilist-shikimori-history-viewer
 // @version      1.1.1
 // @description  Shows history from exported Shikimori History JSON on Anilist social page
-// @author       you
+// @author       EastRane
 // @match        https://anilist.co/*
 // @grant        none
 // ==/UserScript==

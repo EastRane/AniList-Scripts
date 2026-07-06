@@ -74,11 +74,17 @@
       const variables = { id: parseInt(id), type: type.toUpperCase() };
 
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
         const res = await fetch('https://graphql.anilist.co', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ query, variables })
+          body: JSON.stringify({ query, variables }),
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
+
         if (!res.ok) return existingData;
 
         const json = await res.json();
@@ -93,6 +99,9 @@
         return merged;
       } catch (e) {
         console.error('AniList Review Bridge API Error:', e);
+        if (e.name === 'AbortError') {
+          console.warn('AniList Review Bridge API request timed out');
+        }
         return existingData;
       }
     })();
