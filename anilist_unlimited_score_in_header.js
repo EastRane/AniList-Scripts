@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          AniList Unlimited - Score in Header
 // @namespace     https://github.com/mysticflute
-// @version       1.0.3-east3
+// @version       1.0.3-1.0.4
 // @description   For anilist.co, make manga and anime scores more prominent by moving them to the title.
 // @author        mysticflute, EastRane
 // @homepageURL   https://github.com/mysticflute/ani-list-unlimited
@@ -10,7 +10,7 @@
 // @connect       graphql.anilist.co
 // @connect       api.jikan.moe
 // @connect       kitsu.io
-// @connect       shikimori.one
+// @connect       shikimori.io
 // @connect       api.hikka.io
 // @grant         GM_xmlhttpRequest
 // @grant         GM_setValue
@@ -58,7 +58,7 @@
     ANI_LIST_API: 'https://graphql.anilist.co',
     MAL_API: 'https://api.jikan.moe/v4',
     KITSU_API: 'https://kitsu.io/api/edge',
-    SHIKIMORI_API: 'https://shikimori.one/api',
+    SHIKIMORI_API: 'https://shikimori.io/api',
     HIKKA_API: 'https://api.hikka.io/integrations/mal',
     ANI_LIST_URL_PATH_REGEX: /(anime|manga)\/([0-9]+)/i,
     LOG_PREFIX: '[AniList Unlimited Score in Header]',
@@ -662,7 +662,7 @@
           }
 
           const score = shikiScore ? shikiScore.toFixed(2) : '(N/A)';
-          const href = `https://shikimori.one/${pageType === 'anime' ? 'animes' : 'mangas'}/${shikimoriId}`;
+          const href = `https://shikimori.io/${pageType === 'anime' ? 'animes' : 'mangas'}/${shikimoriId}`;
 
           let info = '';
           if (data.rates_scores_stats && data.rates_scores_stats.length > 0) {
