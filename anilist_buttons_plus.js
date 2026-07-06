@@ -3,7 +3,7 @@
 // @name        AniList Buttons Plus
 // @include     https://anilist.co/*
 // @description A script that adds buttons on Anilist for searching various sites.
-// @version     2.820-east2
+// @version     2.820-1.0.3
 // @grant       GM_addStyle
 // @namespace   https://greasyfork.org/users/18375
 // ==/UserScript==
@@ -50,8 +50,8 @@
         if (!isManga) {
             buttons.push(
                 { title: "Animelib", url: `https://animelib.org/ru/catalog?q=${encoded}` },
-                { title: "AnimeKai", url: `https://animekai.to/browser?keyword=${encoded}` },
-                { title: "HiAnime", url: `https://hianime.to/search?keyword=${encoded}` },
+                { title: "Animetsu", url: `https://animetsu.net/browse?query=${encoded}` },
+                { title: "AnimeX", url: `https://animex.one/catalog?search=${encoded}` },
                 { title: "aniDB", url: `https://anidb.net/anime/?adb.search=${encoded}&do.search=1` }
             );
         }
