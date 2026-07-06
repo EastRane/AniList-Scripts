@@ -1,10 +1,10 @@
-# AniList-Scripts
-A bunch of self-written and modified community scripts for anilist.co
+# userscripts
+A bunch of self-written and modified community scripts for a bunch of websites
 
 ## AniList Unlimited - Score in Header
 Original repository: [GitHub](https://github.com/mysticflute/ani-list-unlimited).
 ### Changes
-- Added shikimori.one score support
+- Added Shikimori and Hikka score support
 
 ## Anilist Buttons Plus
 Original repository: [GitHub](https://github.com/Deatthwing/anime-website-buttons-plus)
@@ -21,10 +21,10 @@ Small fixes to [hoh's Automail script](https://github.com/hohMiyazawa/Automail) 
 - Dynamic sidebar margin resize based on scripts' additions to a header / AniList
 
 ## AniList Multilingual Titles
-Shows multilingual titles on anime/manga pages.
+Shows multilingual titles on media pages (JP by default and EN / RU / UA when hovering).
 
 ## Shikimori History Exporter/Viewer
-Lets you view your Shikimori history on the AniList Social tab of an anime or manga page (of course client-sided).
+Lets you view your Shikimori history on the "Social" tab of media pages (client-sided, obviously).
 
 ## AniList Review Bridge
 Shows "open review" button every time there is a review on my website related to the opened media.
