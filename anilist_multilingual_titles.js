@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         AniList Multilingual Titles
 // @namespace    anilist-multilingual-titles
-// @version      1.2.0
+// @version      1.2.1
 // @description  Shows multilingual titles on anime/manga pages
 // @author       EastRane
 // @match        https://anilist.co/*
 // @grant        GM.xmlHttpRequest
 // @connect      graphql.anilist.co
-// @connect      shikimori.one
+// @connect      shikimori.io
 // @connect      api.hikka.io
 // ==/UserScript==
 
@@ -15,7 +15,7 @@
     'use strict';
 
     const ANILIST_API = 'https://graphql.anilist.co';
-    const SHIKIMORI_API = 'https://shikimori.one/api';
+    const SHIKIMORI_API = 'https://shikimori.io/api';
     const HIKKA_API = 'https://api.hikka.io/integrations/mal';
 
     const LOG_PREFIX = '[Multilingual Title]';
