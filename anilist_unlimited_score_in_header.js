@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name          AniList Unlimited - Score in Header
 // @namespace     https://github.com/mysticflute
-// @version       1.0.3-1.0.4
+// @version       1.0.3-1.0.5
 // @description   For anilist.co, make manga and anime scores more prominent by moving them to the title.
 // @author        mysticflute, EastRane
 // @homepageURL   https://github.com/mysticflute/ani-list-unlimited
 // @supportURL    https://github.com/mysticflute/ani-list-unlimited/issues
 // @match         https://anilist.co/*
 // @connect       graphql.anilist.co
-// @connect       api.jikan.moe
+// @connect       api.tenrai.org
 // @connect       kitsu.io
 // @connect       shikimori.io
 // @connect       api.hikka.io
@@ -56,7 +56,7 @@
 
   const constants = {
     ANI_LIST_API: 'https://graphql.anilist.co',
-    MAL_API: 'https://api.jikan.moe/v4',
+    TENRAI_API: 'https://api.tenrai.org/v1',
     KITSU_API: 'https://kitsu.io/api/edge',
     SHIKIMORI_API: 'https://shikimori.io/api',
     HIKKA_API: 'https://api.hikka.io/integrations/mal',
@@ -248,18 +248,18 @@
       }
     },
 
-    async loadMyAnimeListData(type, myAnimeListId) {
+    async loadTenraiData(type, myAnimeListId) {
       try {
         const response = await utils.xhr({
-          url: `${constants.MAL_API}/${type}/${myAnimeListId}`,
+          url: `${constants.TENRAI_API}/${type}/${myAnimeListId}`,
           method: 'GET',
           responseType: 'json',
         });
-        utils.debug('MyAnimeList API response:', response);
+        utils.debug('Tenrai API response:', response);
 
         return response.data;
       } catch (res) {
-        const message = `MyAnimeList API request failed for mapped MyAnimeList ID '${myAnimeListId}'`;
+        const message = `Tenrai API request failed for MyAnimeList ID '${myAnimeListId}'`;
         utils.groupError(
           message,
           `Request failed with status ${res.status}`,
@@ -530,7 +530,7 @@
       const source = 'MyAnimeList';
 
       if (!aniListData.idMal) {
-        utils.error(`no ${source} id found for media ${mediaId}`);
+        utils.error(`no MAL id found for media ${mediaId}, skipping Tenrai request`);
         return this.clearHeaderSlot(slot);
       }
 
@@ -539,16 +539,21 @@
       }
 
       api
-        .loadMyAnimeListData(pageType, aniListData.idMal)
+        .loadTenraiData(pageType, aniListData.idMal)
         .then(data => {
-          const score = data.score;
+          if (!data) {
+            utils.error(`no data returned from Tenrai for MAL ID ${aniListData.idMal}`);
+            return this.clearHeaderSlot(slot);
+          }
+          
+          const score = data.score ? data.score.toFixed(2) : '(N/A)';
           const href = data.url;
 
           return this.addToHeader({ slot, source, score, href });
         })
         .catch(e => {
           utils.error(
-            `Unable to add the ${source} score to the header: ${e.message}`
+            `Unable to add the ${source} score via Tenrai to the header: ${e.message}`
           );
 
           if (e.response && e.response.status === 503) {
@@ -556,14 +561,28 @@
               slot,
               source,
               score: 'Unavailable',
-              info: ': The Jikan API is temporarily unavailable. Please try again later',
+              info: ': The Tenrai API is temporarily unavailable. Please try again later',
             });
           } else if (e.response && e.response.status === 429) {
             return this.addToHeader({
               slot,
               source,
               score: 'Unavailable*',
-              info: ': Temporarily unavailable due to rate-limiting, since you made too many requests to the MyAnimeList API. Reload in a few seconds to try again',
+              info: ': Temporarily unavailable due to rate-limiting. Reload in a few seconds to try again',
+            });
+          } else if (e.response && e.response.status === 404) {
+             return this.addToHeader({
+              slot,
+              source,
+              score: 'Not Found',
+              info: ': Entry not found on Tenrai mapping database',
+            });
+          } else {
+             return this.addToHeader({
+              slot,
+              source,
+              score: '(N/A)',
+              info: ': Internal retrieval failure',
             });
           }
         });
